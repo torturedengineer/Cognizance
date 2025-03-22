@@ -1,0 +1,261 @@
+
+```python
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+d1 = pd.read_csv(r"C:\Users\Ishan Yadu\Documents\IITB\Competitions\Cognizance\Cosmic Classifier\thermoracleTrain.csv")
+d1.head(8)
+```
+
+```python
+d1.shape
+```
+
+```python
+d1.isnull().sum()
+```
+
+```python
+(d1.isnull().sum()/d1.shape[0])*100 #Cheching percentage null values
+```
+
+```python
+d1.isnull().sum().sum()
+```
+
+```python
+(d1.isnull().sum().sum()/(d1.shape[0]*d1.shape[1]))*100
+```
+
+```python
+sns.heatmap(d1.isnull())
+plt.show() #null value distribution analysis
+```
+
+```python
+d1.dropna(inplace=True)
+d1.isnull().sum().sum()  #removing null values
+```
+
+```python
+d1.shape
+```
+
+```python
+((60000-34059)/60000)*100  #estimation of percentage data left for traning
+```
+
+```python
+d1.head(8)
+```
+
+```python
+d1["Magnetic Field Strength"].unique()
+```
+
+```python
+encode = [[ "Category_0", "Category_1", "Category_2", "Category_3",
+       "Category_4", "Category_5", "Category_6", "Category_7",
+       "Category_8", "Category_9", "Category_10", "Category_11",
+       "Category_12", "Category_13", "Category_14", "Category_15",
+       "Category_16", "Category_17", "Category_18", "Category_19", "Category_20"]]
+from sklearn.preprocessing import OrdinalEncoder
+d2 = OrdinalEncoder(categories = encode)
+d2.fit(d1[["Magnetic Field Strength"]])
+d1["Magnetic Field Strength"]=d2.transform(d1[["Magnetic Field Strength"]])
+```
+
+```python
+d1["Radiation Levels"].unique()
+```
+
+```python
+d3 = OrdinalEncoder(categories = encode)
+d3.fit(d1[["Radiation Levels"]])
+d1["Radiation Levels"]=d3.transform(d1[["Radiation Levels"]]) #encoding the categorical data of magnetic feild and radiation levels for analysis
+```
+
+```python
+d1.head(8)
+```
+
+```python
+d1.describe() #cheching the statistics of the data
+```
+
+```python
+sns.distplot(d1["Atmospheric Density"])
+plt.show()
+sns.distplot(d1["Surface Temperature"])
+plt.show()
+sns.distplot(d1["Gravity"])
+plt.show()
+sns.distplot(d1["Water Content"])
+plt.show()
+sns.distplot(d1["Mineral Abundance"])
+plt.show()
+sns.distplot(d1["Orbital Period"])
+plt.show()
+sns.distplot(d1["Proximity to Star"])
+plt.show()
+sns.distplot(d1["Atmospheric Composition Index"])
+plt.show() #cheching the distribution curve of data
+```
+
+```python
+colo = [ "Atmospheric Density", "Surface Temperature", "Gravity", "Water Content",
+    "Mineral Abundance", "Orbital Period", "Proximity to Star", "Atmospheric Composition Index"]
+
+for col in colo:
+    q1 = d1[col].quantile(0.25)
+    q3 = d1[col].quantile(0.75)
+    iqr = q3 - q1
+    min_value = q1 - 1.5 * iqr
+    max_value = q3 + 1.5 * iqr
+    d1 = d1[(d1[col] >= min_value) & (d1[col] <= max_value)] #removing outliers with quantile method instead of z score as our distribution is non normal
+
+```
+
+```python
+d1.shape
+```
+
+```python
+d1.duplicated().sum() #cgeching for any duplicate rows
+```
+
+```python
+d1.skew() 
+```
+
+```python
+d1["Prediction"] = d1["Prediction"].astype(int)  
+d1.info()
+```
+
+```python
+x=d1.iloc[:,:-1]
+y=d1["Prediction"]
+x.head(8) #splitting the data into x and y
+```
+
+```python
+y.head(8)
+```
+
+```python
+y.unique()
+```
+
+```python
+from sklearn.preprocessing import StandardScaler
+sc=StandardScaler()
+sc.fit(x) 
+x=pd.DataFrame(sc.transform(x),columns=x.columns)
+x.head(8) #performing standard scaling as deep learning gets well trained with scaled data
+```
+
+```python
+from sklearn.model_selection import train_test_split 
+x_train,x_test,y_train,y_test = train_test_split(x,y,test_size=0.3,random_state=23) #splitting the data into train and test
+```
+
+```python
+x_train.shape
+```
+
+```python
+y_train.shape[0]
+```
+
+```python
+import tensorflow 
+from tensorflow.keras.layers import Dense, BatchNormalization, Dropout
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping
+from sklearn.metrics import accuracy_score
+from keras.regularizers import L2
+
+ann=Sequential() 
+ann.add(Dense(256,input_dim=10,activation="relu")) 
+ann.add(BatchNormalization())
+ann.add(Dropout(0.4))
+ann.add(Dense(224,activation="relu")) 
+ann.add(BatchNormalization())
+ann.add(Dropout(0.4))
+ann.add(Dense(224,activation="relu")) 
+ann.add(BatchNormalization())
+ann.add(Dropout(0.4))
+ann.add(Dense(10,activation="softmax"))
+
+ann.compile(optimizer="adam",loss="sparse_categorical_crossentropy",metrics=["accuracy"])
+early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+ann.fit(x_train, y_train, batch_size=32, epochs=100, validation_data=(x_test, y_test),callbacks=[early_stopping])
+
+y_pred=ann.predict(x_test)
+y_pred=tensorflow.argmax(y_pred,axis=1).numpy()
+y_given=ann.predict(x_train)
+y_given=tensorflow.argmax(y_given,axis=1).numpy()
+
+print("Test: ",(accuracy_score(y_test,y_pred))*100)
+print("Train: ",(accuracy_score(y_train,y_given))*100) #running the ANN deep learning rtechnique as it provided the best results and all the hyperparameters tuning is done by experimenting and training and testing accuracy
+```
+
+```python
+td = pd.read_csv(r"C:\Users\Ishan Yadu\Documents\IITB\Competitions\Cognizance\Cosmic Classifier\cosmictest.csv")
+td.head(8) # loading the test data
+```
+
+```python
+td.isnull().sum()
+```
+
+```python
+input = td.copy()
+input.head(8)
+```
+
+```python
+encode = [[ "Category_0", "Category_1", "Category_2", "Category_3",
+       "Category_4", "Category_5", "Category_6", "Category_7",
+       "Category_8", "Category_9", "Category_10", "Category_11",
+       "Category_12", "Category_13", "Category_14", "Category_15",
+       "Category_16", "Category_17", "Category_18", "Category_19", "Category_20"]]
+
+d3= OrdinalEncoder(categories = encode)
+d3.fit(td[["Magnetic Field Strength"]])
+td["Magnetic Field Strength"]=d3.transform(td[["Magnetic Field Strength"]])
+
+d3.fit(td[["Radiation Levels"]])
+td["Radiation Levels"]=d3.transform(td[["Radiation Levels"]])
+
+td.head(8)
+```
+
+```python
+sc=StandardScaler()
+sc.fit(td) 
+td=pd.DataFrame(sc.transform(td),columns=td.columns)
+td.head(8) #similar pre processing is performed for the test data instead of removing outliers as being the test data, they come from real experimental units and hence there outliers cant be removed
+```
+
+```python
+y_final=ann.predict(td)
+y_final=tensorflow.argmax(y_final,axis=1).numpy()
+y_final
+```
+
+```python
+input['Predictions']=y_final
+input.head(8)
+```
+
+```python
+input.to_csv('CosmicClassifier_Cogni2046006_test.csv', index=False) #saving the csv file
+```
+
+```python
+
+```
+
